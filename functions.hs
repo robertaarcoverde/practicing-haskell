@@ -61,7 +61,10 @@ part n l
 	permutations function
  ------------------------------------------------------------------------------}
 
-
-permutations :: [a] -> [[a]]
+-- this depends on an adequate definition of 'remove' to work
 permutations [] = [[]]
-permutations (x:xs) = [ r | z <- (x:xs), r <- map (z:) (permutations (xs))]
+permutations (xs) = [ r | z <- xs, r <- map (z:) (permutations (remove z xs))]
+
+remove :: Eq a => a -> [a] -> [a]
+remove x (y:ys) = if (x == y) then ys else y:(remove x ys)
+
