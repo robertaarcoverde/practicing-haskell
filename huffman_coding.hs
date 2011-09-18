@@ -17,9 +17,10 @@
 data BTree a = Leaf a | Fork (BTree a) (BTree a)
 
 type Huff = (BTree Char, Int)
- 
 
- 
+type CodeTable = [(Char,[Int])] 
+
+{--- decode function ---} 
 decode :: BTree Char -> [Int] -> [Char]
 decode b [] = []
 decode b cs = decode' b cs
@@ -28,3 +29,8 @@ decode b cs = decode' b cs
 		decode' (Fork t1 t2) (0:cs') = (decode' t1 cs')
 		decode' (Fork t1 t2) (1:cs') = (decode' t2 cs')
 		
+transform :: BTree Char -> CodeTable
+transform (Leaf c) = [(c, [])]
+transform (Fork t1 t2) = ((ins 0 (transform t1)) ++ (ins 1 (transform t2)))
+	where
+		ins b = map (\(c,l) -> (c,b:l)) -- inserts the int b in front of each list in the CodeTable pairs
