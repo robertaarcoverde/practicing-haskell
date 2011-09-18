@@ -75,3 +75,9 @@ remove :: Eq a => a -> [a] -> [a]
 remove x (y:ys) = if (x == y) then ys else y:(remove x ys)
 
 -- example: permutations [1,2,3] = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]
+
+{------------------------------------------------------------------------------
+	permutations function extended (without list comprehension)
+ ------------------------------------------------------------------------------}
+permutations' [] = [[]]
+permutations' (xs) = concat (map(\x -> map (x:) (permutations (remove x xs))) xs)

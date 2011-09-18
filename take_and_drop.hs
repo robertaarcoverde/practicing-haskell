@@ -1,9 +1,28 @@
 {------------------------------------------------------------------------------
  | 1) Redefining Take and Drop
- ------------------------------------------------------------------------------}
+	
+	checking what happens when applying regular take and drop
+	to partial lists	
+	
+	take 0 undefined = []
+	take 2 undefined = Exception! (undefined) //oops!
+	take undefined [] = Exception! (undefined) //oops!
+	take undefined [1..3] = Exception! (undefined) //oops!
 
-{------------------------------------------------------------------------------
-	take' function
+	the first test worked properly because of the definition of take:		
+		take 0 xs = []
+		take n [] = []
+		take n (x:xs) = x : take' (n-1) xs
+	
+	it matches n, and returns an empty list, regardless of xs. the third test,
+	however, does not work:
+		take undefined [] = undefined!
+	
+	that happens because, when evaluating the first expression, it tries to
+	match undefined with 0 - and this gives us bottom (or undefined)!
+	
+	now, lets check what happens when we redefe take, changing the order of 
+	the 2 first expressions:
  ------------------------------------------------------------------------------}
 
 take' :: Integer -> [a] -> [a]
@@ -12,39 +31,34 @@ take' 0 xs = []
 take' n (x:xs) = x : take' (n-1) xs
 
 {------------------------------------------------------------------------------
-	drop' function
+
+	take' 0 undefined = Exception! (undefined)
+	take' 2 undefined = Exception! (undefined)
+	take' undefined [] = []
+	take' undefined [1..3] = Exception! (undefined)
+	
+	...and we got some different results here! since now take 0 xs is the
+	second expression, when we apply the first test (take' 0 undefined),
+	it will try to match 0 against n and undefined against the empty list - and
+	that results in undefined! however, when testing (take' undefined []), 
+	the function correctly returns the empty list. we can't have both cases
+	working on the same implementation. same thing happens with drop:
+
  ------------------------------------------------------------------------------}
 
 drop' n [] = []
 drop' 0 l = l
 drop' n (x:xs) = drop' (n - 1) xs
 
-{------------------------------------------------------------------------------
-	ao usar drop n de uma lista infinita, o programa entra em loop
-	imprimindo os elementos da lista até que seja interrompido.
-
-		Ex: drop 3 [1..] resulta na impressão de [4,5,6,7,8...120382] 
-			(considerando que a execução foi interrompida neste ponto)
-			
-	usando a redefinição de drop, com as primeiras duas expressões trocadas,
-	obtive o mesmo resultado: funciona normalmente pra listas finitas,
-	e imprime até ser interrompido quando aplicado a listas infinitas.
- ------------------------------------------------------------------------------}
-
-{------------------------------------------------------------------------------
- | 2) Extending Permutations' list-comprehension expressions
- ------------------------------------------------------------------------------}
-
-{------------------------------------------------------------------------------
-	permutations function
- ------------------------------------------------------------------------------}
-
-permutations [] = [[]]
-permutations (xs) = [ r | z <- xs, r <- map (z:) (permutations (remove z xs))]
-
-remove :: Eq a => a -> [a] -> [a]
-remove x (y:ys) = if (x == y) then ys else y:(remove x ys)
-
-{------------------------------------------------------------------------------
-	extended permutations function
- ------------------------------------------------------------------------------}
+ {------------------------------------------------------------------------------	
+	drop 0 undefined = Exception! (undefined)
+	drop 2 undefined = Exception! (undefined)
+	drop undefined [] = Exception! (undefined)
+	drop undefined [1..3] = Exception! (undefined)
+	
+	drop' 0 undefined = Exception! (undefined)
+	drop' 2 undefined = Exception! (undefined)
+	drop' undefined [] = []
+	drop' undefined [1..3] = Exception! (undefined)
+	
+------------------------------------------------------------------------------}
