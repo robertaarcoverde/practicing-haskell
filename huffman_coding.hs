@@ -105,3 +105,14 @@ huffWeight (b, n1) (c, n2) = n1 < n2
 sortf :: (a -> a -> Bool) -> [a] -> [a]
 sortf f [] = []
 sortf f (x:xs) = sortf (f) (filter (not . f x) xs)  ++ [x] ++ sortf f (filter (f x) xs)
+
+unwrap :: Huff -> BTree Char
+unwrap (c, l) = c
+
+{-------------------------------------------------------------
+	This is a simple test function. It should return
+	the exact char array passed to it.
+-------------------------------------------------------------}
+test :: [Char] -> [Char]
+test l = let btree = unwrap (mkHuff (sample l))
+			in decode btree (encode btree l)
