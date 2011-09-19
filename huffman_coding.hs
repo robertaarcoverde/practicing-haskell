@@ -20,7 +20,14 @@ type Huff = (BTree Char, Int)
 
 type CodeTable = [(Char,[Int])] 
 
-{--- decode function ---} 
+{--- decode function -----------------------
+
+Some test examples:
+
+decode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) [1] ==> "c"
+decode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) [0,1] ==> "b"
+
+--------------------------------------------} 
 decode :: BTree Char -> [Int] -> [Char]
 decode b [] = []
 decode b cs = decode' b cs
@@ -34,3 +41,36 @@ transform (Leaf c) = [(c, [])]
 transform (Fork t1 t2) = ((ins 0 (transform t1)) ++ (ins 1 (transform t2)))
 	where
 		ins b = map (\(c,l) -> (c,b:l)) -- inserts the int b in front of each list in the CodeTable pairs
+
+encode :: BTree Char -> [Char] -> [Int]
+encode b [] = []
+encode b (c:cs) = (lookupChar t c) ++ encode b cs
+	where
+		t = transform b
+
+lookupChar :: CodeTable -> Char -> [Int]
+lookupChar [] _ = []
+lookupChar ((a,l):xs) c
+	| (a == c) = l
+	| otherwise = lookupChar xs c
+	
+-- now, lets build the tree!
+
+sample :: [Char] -> [(Char, Int)]
+sample = sortf freq . collate . sortf (<)
+
+freq :: (Char, Int) -> (Char, Int) -> Bool
+freq (_, n1) (_, n2) = n1 < n2
+
+collate :: [Char] -> [(Char, Int)]
+collate [] = []
+collate (x:xs) = (x, length ys + 1) : collate zs
+	where
+		(ys, zs) = span (==x) xs
+
+--span p xs = (takewhile p xs, dropwhile p xs) -- essa funcao ja existia no Prelude
+
+-- implementing quick sort, just because its cool
+sortf :: Ord a => (a -> a -> Bool) -> [a] -> [a]
+sortf f [] = []
+sortf f (x:xs) = sortf (f) (filter (not . f x) xs)  ++ [x] ++ sortf f (filter (f x) xs)
