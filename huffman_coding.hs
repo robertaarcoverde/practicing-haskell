@@ -66,9 +66,9 @@ collate :: [Char] -> [(Char, Int)]
 collate [] = []
 collate (x:xs) = (x, length ys + 1) : collate zs
 	where
-		(ys, zs) = span (==x) xs
+		(ys, zs) = span' (==x) xs
 
---span p xs = (takewhile p xs, dropwhile p xs) -- essa funcao ja existia no Prelude
+span' p xs = (takeWhile p xs, dropWhile p xs) -- already on Prelude
 
 -- implementing quick sort, just because its cool
 sortf :: Ord a => (a -> a -> Bool) -> [a] -> [a]
