@@ -15,7 +15,8 @@
  ------------------------------------------------------------------------------}
 
 data BTree a = Leaf a | Fork (BTree a) (BTree a)
-
+	deriving Show
+	
 type Huff = (BTree Char, Int)
 
 type CodeTable = [(Char,[Int])] 
@@ -68,9 +69,39 @@ collate (x:xs) = (x, length ys + 1) : collate zs
 	where
 		(ys, zs) = span' (==x) xs
 
-span' p xs = (takeWhile p xs, dropWhile p xs) -- already on Prelude
+span' p xs = (takeWhile p xs, dropWhile p xs)
 
+-- finally, lets connect the dots!
+
+mkHuff :: [(Char, Int)] -> Huff
+mkHuff = head . until' singleton combine . map cHuff
+	where
+		cHuff (c, n) = (Leaf c, n)
+
+-- this is probably my favorite function evah
+-- Prelude already holds a definition for until,
+-- so lets call this one until'
+until' :: (a -> Bool) -> (a -> a) -> a -> a
+until' p f a
+	| (p a) = a
+	| otherwise = until' p f (f a)
+
+singleton :: [a] -> Bool
+singleton xs
+	| length xs == 1 = True
+	| otherwise = False
+	
+-- combines the first two huffs into one
+-- and inserts it into the right index
+combine :: [Huff] -> [Huff]
+combine (x:y:xs) = sortf (huffWeight) (merge x y : xs)
+	where
+		merge (a, n1) (b, n2) = ((Fork a b), (n1 + n2))
+
+huffWeight :: Huff -> Huff -> Bool
+huffWeight (b, n1) (c, n2) = n1 < n2
+		
 -- implementing quick sort, just because its cool
-sortf :: Ord a => (a -> a -> Bool) -> [a] -> [a]
+sortf :: (a -> a -> Bool) -> [a] -> [a]
 sortf f [] = []
 sortf f (x:xs) = sortf (f) (filter (not . f x) xs)  ++ [x] ++ sortf f (filter (f x) xs)
