@@ -5,7 +5,7 @@
  ------------------------------------------------------------------------------}
 
 {------------------------------------------------------------------------------
-	We first start defining our data structures: a simple binary tree
+	First we define our data structures: a simple binary tree
 	(holding values on the leaves only) and a pair we call Huff, that associates
 	a tree of chars with its weight. The BTree needs a value to be constructed;
 	a Huff is only an alias for a pair between a BTree and an integer (the
@@ -21,14 +21,16 @@ type Huff = (BTree Char, Int)
 
 type CodeTable = [(Char,[Int])] 
 
-{--- decode function -----------------------
+{------------------------------------------------------------------------------
+
+Decodes a BTree according to a bit pattern.
 
 Some test examples:
 
 decode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) [1] ==> "c"
 decode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) [0,1] ==> "b"
 
---------------------------------------------} 
+------------------------------------------------------------------------------}
 decode :: BTree Char -> [Int] -> [Char]
 decode b [] = []
 decode b cs = decode' b cs
@@ -36,6 +38,22 @@ decode b cs = decode' b cs
 		decode' (Leaf c) cs' = c : decode b cs'
 		decode' (Fork t1 t2) (0:cs') = (decode' t1 cs')
 		decode' (Fork t1 t2) (1:cs') = (decode' t2 cs')
+
+{------------------------------------------------------------------------------
+
+Returns the bit pattern for a given text, using its huffman tree.
+
+Some test examples:
+
+encode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) "a" ==> [0,0]
+encode (Fork (Fork (Leaf 'a') (Leaf 'b')) (Leaf 'c')) "b" ==> [0,1]
+
+------------------------------------------------------------------------------}		
+encode :: BTree Char -> [Char] -> [Int]
+encode b [] = []
+encode b (c:cs) = (lookupChar t c) ++ encode b cs
+	where
+		t = transform b
 		
 transform :: BTree Char -> CodeTable
 transform (Leaf c) = [(c, [])]
@@ -43,12 +61,7 @@ transform (Fork t1 t2) = ((ins 0 (transform t1)) ++ (ins 1 (transform t2)))
 	where
 		ins b = map (\(c,l) -> (c,b:l)) -- inserts the int b in front of each list in the CodeTable pairs
 
-encode :: BTree Char -> [Char] -> [Int]
-encode b [] = []
-encode b (c:cs) = (lookupChar t c) ++ encode b cs
-	where
-		t = transform b
-
+-- simple linear search in the codetable	
 lookupChar :: CodeTable -> Char -> [Int]
 lookupChar [] _ = []
 lookupChar ((a,l):xs) c
@@ -56,13 +69,13 @@ lookupChar ((a,l):xs) c
 	| otherwise = lookupChar xs c
 	
 -- now, lets build the tree!
-
 sample :: [Char] -> [(Char, Int)]
 sample = sortf freq . collate . sortf (<)
 
 freq :: (Char, Int) -> (Char, Int) -> Bool
 freq (_, n1) (_, n2) = n1 < n2
 
+-- returns a pair containing the number of occurrences for each char
 collate :: [Char] -> [(Char, Int)]
 collate [] = []
 collate (x:xs) = (x, length ys + 1) : collate zs
