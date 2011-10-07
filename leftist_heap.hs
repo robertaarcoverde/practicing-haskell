@@ -25,3 +25,13 @@ insert v h = merge (T 1 v E E) h
 delete :: Ord a => Heap a -> Heap a
 delete E = E
 delete (T _ v1 h1 h2) = merge h1 h2
+
+sort :: Ord a => [a] -> [a]
+sort [] = []
+sort l = makeList (makeHeap l)
+
+makeHeap [] = E
+makeHeap (x:xs) = merge (T 1 x E E) (makeHeap xs)
+
+makeList E = []
+makeList t@(T r v h1 h2) = v : makeList(delete t)
