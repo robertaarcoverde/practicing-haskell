@@ -11,6 +11,8 @@ data Exp = ExpK Int
 	
 type S = String -> Int
 
+type SE = S -> (Int, S)
+
 -- initializing everyone with 0
 initstore :: S
 initstore id = 0
@@ -22,25 +24,25 @@ update s var v = s'
 			| var' == var = v
 			| otherwise = s var'
 	
+ret :: Int -> SE
+ret x = \s -> (x, s)
+	
+seqv :: SE -> (Int -> SE) -> SE
+seqv se1 f se2 = f v s'
+		where
+			(v, s') = se1 se2
+
+seq' :: SE -> SE -> SE
+seq' se1 se2 = seqv se1 (\_ -> se2)
+
 eval :: Exp -> S -> (Int, S)
-eval (ExpK n) s = (n, s)
-eval (ExpVar var) s = (s var, s)
-eval (ExpAsg var e) s = (v, update s' var v)
-	where
-		(v, s') = eval e s
+eval (ExpK n) = ret n
+eval (ExpVar var) = \s -> (s var, s)
+eval (ExpAsg var e) = \s -> let (v, s') = eval e s in (v, update s' var v)	
 		
-eval (ExpSeq e1 e2) s = eval e2 s'
-	where
-		(_, s') = eval e1 s
-
-eval (ExpIf e1 e2 e3) s = if (c /= 0) then eval e2 s' else eval e3 s'
-	where
-		(c, s') = eval e1 s
-
-eval (ExpAdd e1 e2) s = ((v1 + v2), s'')
-	where 
-		(v1, s') = eval e1 s
-		(v2, s'') = eval e2 s'
+eval (ExpSeq e1 e2) = seq' (eval e1) (eval e2)
+eval (ExpIf e1 e2 e3) = seqv (eval e1) (\b -> if (b /= 0) then eval e2 else eval e3)
+eval (ExpAdd se1 se2) = seqv (eval se1) (\v1 -> seqv (eval se2) (\v2 -> ret (v1 + v2)))
 
 -- para testar:
 to_s :: (Int, S) -> String
