@@ -7,12 +7,20 @@ data Exp = ExpK Int
 	| ExpAsg String Exp
 	| ExpAdd Exp Exp
 	| ExpSeq Exp Exp
-	| ExpIf Exp Exp Exp
+	| ExpIf Exp Exp Exp  deriving Show
 	
 type S = String -> Int
-	
+
+-- initializing everyone with 0
+initstore :: S
+initstore id = 0
+-- updating the store returns a new store (representing the new environment)
 update :: S -> String -> Int -> S
-update f var v = f
+update s var v = s'
+	where
+		s' var'
+			| var' == var = v
+			| otherwise = s var'
 	
 eval :: Exp -> S -> (Int, S)
 eval (ExpK n) s = (n, s)
@@ -33,3 +41,7 @@ eval (ExpAdd e1 e2) s = ((v1 + v2), s'')
 	where 
 		(v1, s') = eval e1 s
 		(v2, s'') = eval e2 s'
+
+-- para testar:
+to_s :: (Int, S) -> String
+to_s (v, _) = show v
