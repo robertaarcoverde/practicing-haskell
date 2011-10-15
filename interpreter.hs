@@ -11,7 +11,7 @@ data Exp = ExpK Int
 	
 type S = String -> Int
 
-type SE = S -> (Int, S)
+type SE a = S -> (a, S)
 
 -- initializing everyone with 0
 initstore :: S
@@ -24,15 +24,15 @@ update s var v = s'
 			| var' == var = v
 			| otherwise = s var'
 	
-ret :: Int -> SE
+ret :: a -> SE a
 ret x = \s -> (x, s)
 	
-seqv :: SE -> (Int -> SE) -> SE
+seqv :: SE a -> (a -> SE b) -> SE b
 seqv se1 f se2 = f v s'
 		where
 			(v, s') = se1 se2
 
-seq' :: SE -> SE -> SE
+seq' :: SE a -> SE b -> SE b
 seq' se1 se2 = seqv se1 (\_ -> se2)
 
 eval :: Exp -> S -> (Int, S)
