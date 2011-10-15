@@ -45,3 +45,33 @@ eval (ExpAdd e1 e2) s = ((v1 + v2), s'')
 -- para testar:
 to_s :: (Int, S) -> String
 to_s (v, _) = show v
+
+-- Examples:
+
+-- a = 1 -->> (ExpAsg "a" (ExpK 1))
+-- b = 2 -->> (ExpAsg "b" (ExpK 2))
+-- add a b --> ExpSeq (ExpSeq (ExpAsg "a" (ExpK 1)) (ExpAsg "b" (ExpK 2))) (ExpAdd (ExpVar "a") (ExpVar "b"))
+test_a_plus_b_equals_three :: String
+test_a_plus_b_equals_three
+	| to_s (eval (ExpSeq (ExpSeq (ExpAsg "a" (ExpK 1)) (ExpAsg "b" (ExpK 2))) (ExpAdd (ExpVar "a") (ExpVar "b"))) initstore) == "3" = "Passed"
+	| otherwise = "Failed - a + b should be 3"
+
+-- a = 1 -->> (ExpAsg "a" (ExpK 1))
+-- b = 2 -->> (ExpAsg "b" (ExpK 2))
+-- if (a) then a = 3 else a = 2 (ExpIf (ExpVar "a") (ExpAsg "a" (ExpK 3)) (ExpAsg "a" (ExpK 2)))
+-- add a b
+test_if_then_else :: String
+test_if_then_else
+	| to_s (eval 
+			(ExpSeq 
+				(ExpSeq 
+					(ExpSeq 
+						(ExpAsg "a" (ExpK 1))  -- a = 1
+						(ExpAsg "b" (ExpK 2))) -- b = 2
+					(ExpIf (ExpVar "a")        -- if (a)
+						(ExpAsg "a" (ExpK 3))  -- then a = 3
+						(ExpAsg "a" (ExpK 2)))) -- else a = 2
+					(ExpAdd (ExpVar "a") (ExpVar "b"))) -- add a b
+				initstore) == "5" = "Passed" -- passes if a + b = 5
+	| otherwise = "Failed - a + b should be 3" -- fails otherwise
+
