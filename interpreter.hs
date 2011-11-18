@@ -11,12 +11,33 @@ data Exp = ExpK Int
 	
 type S = String -> Int
 
-type SE a = S -> (a, S)
+newtype SE a = SE { makeSE :: S -> (a, S)}
 
--- initializing everyone with 0
+instance Monad SE where
+	return x = ret x
+	s >>= f = seqv s f
+
+-- return function
+ret :: a -> SE a
+ret x = SE (\s -> (x, s))
+
+-- >>= function	
+seqv :: SE a -> (a -> SE b) -> SE b
+seqv se1 f = SE (\se2 -> let (v, s') = makeSE se1 se2 in makeSE (f v) s')
+
+seq' :: SE a -> SE b -> SE b
+seq' se1 se2 = seqv se1 (\_ -> se2)
+
+-- funcao auxiliar para extrair a funcao do SE
+-- (nao sei se ha um modo mais elegante de fazer isso.. deve haver)
+extSE :: SE a -> (S -> (a, S))
+extSE (SE p) = p
+
+-- inicializar o store
 initstore :: S
 initstore id = 0
--- updating the store returns a new store (representing the new environment)
+
+-- atualizar o store retorna um novo store
 update :: S -> String -> Int -> S
 update s var v = s'
 	where
@@ -24,27 +45,17 @@ update s var v = s'
 			| var' == var = v
 			| otherwise = s var'
 	
-ret :: a -> SE a
-ret x = \s -> (x, s)
-	
-seqv :: SE a -> (a -> SE b) -> SE b
-seqv se1 f se2 = f v s'
-		where
-			(v, s') = se1 se2
-
-seq' :: SE a -> SE b -> SE b
-seq' se1 se2 = seqv se1 (\_ -> se2)
-
+-- avaliando as expressoes
 eval :: Exp -> S -> (Int, S)
-eval (ExpK n) = ret n
+eval (ExpK n) = extSE (ret n)
 eval (ExpVar var) = \s -> (s var, s)
 eval (ExpAsg var e) = \s -> let (v, s') = eval e s in (v, update s' var v)	
 		
-eval (ExpSeq e1 e2) = seq' (eval e1) (eval e2)
-eval (ExpIf e1 e2 e3) = seqv (eval e1) (\b -> if (b /= 0) then eval e2 else eval e3)
-eval (ExpAdd se1 se2) = seqv (eval se1) (\v1 -> seqv (eval se2) (\v2 -> ret (v1 + v2)))
+eval (ExpSeq e1 e2) = extSE (seq' (SE (eval e1)) (SE(eval e2)))
+eval (ExpIf e1 e2 e3) = extSE (seqv (SE (eval e1)) (\b -> if (b /= 0) then SE (eval e2) else SE (eval e3)))
+eval (ExpAdd se1 se2) = extSE (seqv (SE (eval se1)) (\v1 -> seqv (SE (eval se2)) (\v2 -> ret (v1 + v2))))
 
--- para testar:
+-- funcao auxiliar de testes
 to_s :: (Int, S) -> String
 to_s (v, _) = show v
 
@@ -52,7 +63,7 @@ to_s (v, _) = show v
 
 -- a = 1 -->> (ExpAsg "a" (ExpK 1))
 -- b = 2 -->> (ExpAsg "b" (ExpK 2))
--- add a b --> ExpSeq (ExpSeq (ExpAsg "a" (ExpK 1)) (ExpAsg "b" (ExpK 2))) (ExpAdd (ExpVar "a") (ExpVar "b"))
+-- add a b -->> ExpSeq (ExpSeq (ExpAsg "a" (ExpK 1)) (ExpAsg "b" (ExpK 2))) (ExpAdd (ExpVar "a") (ExpVar "b"))
 test_a_plus_b_equals_three :: String
 test_a_plus_b_equals_three
 	| to_s (eval (ExpSeq (ExpSeq (ExpAsg "a" (ExpK 1)) (ExpAsg "b" (ExpK 2))) (ExpAdd (ExpVar "a") (ExpVar "b"))) initstore) == "3" = "Passed"
@@ -60,7 +71,7 @@ test_a_plus_b_equals_three
 
 -- a = 1 -->> (ExpAsg "a" (ExpK 1))
 -- b = 2 -->> (ExpAsg "b" (ExpK 2))
--- if (a) then a = 3 else a = 2 (ExpIf (ExpVar "a") (ExpAsg "a" (ExpK 3)) (ExpAsg "a" (ExpK 2)))
+-- if (a) then a = 3 else a = 2 -->> (ExpIf (ExpVar "a") (ExpAsg "a" (ExpK 3)) (ExpAsg "a" (ExpK 2)))
 -- add a b
 test_if_then_else :: String
 test_if_then_else
