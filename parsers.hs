@@ -1,3 +1,4 @@
+-- monad
 newtype Parser a = MkP (String -> [(a,String)])
 
 apply :: Parser a -> String -> [(a,String)]
