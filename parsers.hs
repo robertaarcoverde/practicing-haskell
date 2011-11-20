@@ -9,4 +9,12 @@ instance Monad Parser where
     p >>= q     = MkP f
         where f s = [(y,s'') | (x,s') <- apply p s, (y,s'') <- apply (q x) s']
 
-		
+getchar :: Parser Char
+getchar = MkP f
+    where f (c:s) = [(c,s)]
+          f [] = []		
+		  
+condchar :: (Char -> Bool) -> Parser Char
+condchar f = do { c <- getchar ; if (f c) then return c else fail "condition" }
+
+checkchar c = condchar (==c)		  
