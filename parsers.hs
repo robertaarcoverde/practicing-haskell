@@ -13,6 +13,9 @@ instance Monad Parser where
 
 parser :: Parser a -> String -> a
 parser p s = fst (head (apply p s))
+
+zero :: Parser a
+zero = MkP (\p -> [])
 		
 {----------------------------------------------
 	chars
@@ -31,15 +34,12 @@ char = condchar (not . (flip elem "*?.+[]()|"))
 
 -- testing:
 -- apply (checkchar '*') "*" --> [('*',"")]
--- apply (checkchar '*') "a" --> *** Exception: could not match char a
+-- apply (checkchar '*') "a" --> []
 -- apply (checkchar '*') "*asd" --> [('*',"asd")]
 
 {----------------------------------------------
 	manipulating parsers
 -----------------------------------------------}
-zero :: Parser a
-zero = MkP (\p -> [])
-
 plus :: Parser a -> Parser a -> Parser a
 plus p1 p2 = MkP f
     where f s = (apply p1 s) ++ (apply p2 s)
@@ -61,7 +61,10 @@ opt p = p `orelse` pEmpty
 
 pEmpty :: Parser String
 pEmpty = ( return "" )				  
-							  
+						
+chain :: Monad a => a [b] -> a [b] -> a [b]
+chain p q = do { xs <- p ; ys <- q ; return (xs ++ ys) }
+						
 {----------------------------------------------
 	cool, generic functions
 -----------------------------------------------}	
@@ -89,7 +92,8 @@ pc2ps = convertp (:[])
 --      | '(' exp ')'
 --      | '[' charset ']'
 --      | '.'
--- charset ::= '^'? [^]]*
+-- charset ::= '^'? [^]]* -- negacao opcional seguido de qqr coisa menos ']' 0 ou mais vezes
+
 
 suffixed :: Parser (Parser String)
 suffixed = do {
@@ -114,9 +118,22 @@ suffix = do {
 
 primary :: Parser (Parser String)
 primary = do {
-	checkchar '.';
-	return (pc2ps getchar);
+		checkchar '.';
+		return (pc2ps getchar);
+	} `orelse` do {
+		checkchar '(';
+		e <- exp;
+		checkchar ')';
+		return e;
+	} `orelse` do {
+		checkchar '[';
+		c <- charset;
+		checkchar ']';
+		return c;
 	}
+
+charset :: Parser (Parser String)
+	
 
 {----------------------------------------------
 	tests
