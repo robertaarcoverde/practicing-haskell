@@ -23,7 +23,7 @@ getchar = MkP f
           f [] = []		
 		  
 condchar :: (Char -> Bool) -> Parser Char
-condchar f = do { c <- getchar ; if (f c) then return c else fail ("condition failed for char " ++ [c]) }
+condchar f = do { c <- getchar ; if (f c) then return c else zero }
 
 checkchar c = condchar (==c)
 
@@ -37,6 +37,9 @@ char = condchar (not . (flip elem "*?.+[]()|"))
 {----------------------------------------------
 	manipulating parsers
 -----------------------------------------------}
+zero :: Parser a
+zero = MkP (\p -> [])
+
 plus :: Parser a -> Parser a -> Parser a
 plus p1 p2 = MkP f
     where f s = (apply p1 s) ++ (apply p2 s)
@@ -51,34 +54,43 @@ rep :: Parser a -> Parser [a]
 rep p = rep1 p `orelse` return []
 
 rep1 :: Parser a -> Parser [a]
-rep1 p = do { x <- p ;  xs <- rep p;  return (x:xs)}							  
+rep1 p = do { x <- p ;  xs <- rep p;  return (x:xs)}			
+
+opt :: Parser String -> Parser String
+opt p = p `orelse` pEmpty
+
+pEmpty :: Parser String
+pEmpty = ( return "" )				  
 							  
 {----------------------------------------------
 	cool, generic functions
 -----------------------------------------------}	
--- isso nao funcionou:
----- convertp f p = do { x <- p; return (f x) }
----- concatp = convertp concat
----- pc2ps = convertp (:[])
--- entao fiz assim mesmo:
-concatp p = do { l <- p; return (concat l)}
-pc2ps p = do { l <- p; return [l] }
+convertp f p = do { x <- p; return (f x) }
+
+concatp = convertp concat
+
+pc2ps = convertp (:[])
+
+--- concatp p = do { l <- p; return (concat l)}
+--- pc2ps p = do { l <- p; return [l] }
 
 {----------------------------------------------
 	regexp parser (per se)
 -----------------------------------------------}	
 -- exp ::=  exp '|' seq  
 --          |  seq
-
-
 -- seq ::=  seq suffixed  
 --          |  suffixed
-
-
 -- suffixed ::= primary
 --          | primary *
 --          | primary ?
 --          | primary +
+-- primary ::= char
+--      | '(' exp ')'
+--      | '[' charset ']'
+--      | '.'
+-- charset ::= '^'? [^]]*
+
 suffixed :: Parser (Parser String)
 suffixed = do {
 	s <- primary;
@@ -88,27 +100,29 @@ suffixed = do {
 
 suffix :: Parser (Parser String -> Parser String)
 suffix = do {
-	checkchar '*';
-	return (concatp rep);
+		checkchar '*';
+		return (concatp . rep)
+	} `orelse` do { 
+		checkchar '?';
+		return opt
+	} `orelse` do {
+		checkchar '+';
+		return (concatp . rep1)
+	} `orelse` do {
+		return id
 	}
 
--- primary ::= char
---      | '(' exp ')'
---      | '[' charset ']'
---      | '.'
 primary :: Parser (Parser String)
 primary = do {
 	checkchar '.';
 	return (pc2ps getchar);
 	}
 
--- charset ::= '^'? [^]]*
-
-
-
-
 {----------------------------------------------
 	tests
 -----------------------------------------------}
+test :: String -> String -> [(String,String)]
+test re str = apply (parser suffixed re) str  
+
 
 -- digitos, email, url, cpf, data...
