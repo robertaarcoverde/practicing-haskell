@@ -93,7 +93,14 @@ pc2ps = convertp (:[])
 --      | '[' charset ']'
 --      | '.'
 -- charset ::= '^'? [^]]* -- negacao opcional seguido de qqr coisa menos ']' 0 ou mais vezes
+exp' :: Parser (Parser String)
+exp' = do
+    x <- seq'
+    xs <- rep (do {checkchar '|'; seq'}) 
+    return (foldr1 plus (x:xs))
 
+seq' :: Parser (Parser String)
+seq' = do { sq <- rep1 suffixed ; return (foldr1 chain sq) }
 
 suffixed :: Parser (Parser String)
 suffixed = do {
@@ -122,24 +129,36 @@ primary = do {
 		return (pc2ps getchar);
 	} `orelse` do {
 		checkchar '(';
-		e <- exp;
+		e <- exp';
 		checkchar ')';
 		return e;
 	} `orelse` do {
 		checkchar '[';
-		c <- charset;
+		l <- classitem;
 		checkchar ']';
-		return c;
+		return (pc2ps (condchar l));
 	}
-
-charset :: Parser (Parser String)
 	
+classitem :: Parser( Char -> Bool )
+classitem = do {
+		ci <- rep (range `orelse` charmatches);
+		return (\c -> or (map (flip ($) c) ci));
+	}
+	
+range :: Parser (Char -> Bool)
+range = do
+    from <- condchar  (/=']');
+    checkchar '-';
+    to <- condchar (/=']');
+    return (`elem` [from..to]);
 
+charmatches :: Parser (Char -> Bool)
+charmatches = do { c <- condchar (/=']'); return (==c) }
+	
 {----------------------------------------------
 	tests
 -----------------------------------------------}
 test :: String -> String -> [(String,String)]
-test re str = apply (parser suffixed re) str  
-
+test re str = apply (parser exp' re) str  
 
 -- digitos, email, url, cpf, data...
