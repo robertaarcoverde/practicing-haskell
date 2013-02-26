@@ -32,6 +32,8 @@ checkchar c = condchar (==c)
 
 char = condchar (not . (flip elem "*?.+[]()|"))
 
+escaped = do { condchar (=='\\') ; c <- getchar ; return c }
+
 -- testing:
 -- apply (checkchar '*') "*" --> [('*',"")]
 -- apply (checkchar '*') "a" --> []
@@ -61,10 +63,7 @@ opt p = p `orelse` pEmpty
 
 pEmpty :: Parser String
 pEmpty = ( return "" )				  
-						
-chain :: Monad a => a [b] -> a [b] -> a [b]
-chain p q = do { xs <- p ; ys <- q ; return (xs ++ ys) }
-						
+												
 {----------------------------------------------
 	cool, generic functions
 -----------------------------------------------}	
@@ -74,11 +73,8 @@ concatp = convertp concat
 
 pc2ps = convertp (:[])
 
---- concatp p = do { l <- p; return (concat l)}
---- pc2ps p = do { l <- p; return [l] }
-
 {----------------------------------------------
-	regexp parser (per se)
+	parser (per se)
 -----------------------------------------------}	
 -- exp ::=  exp '|' seq  
 --          |  seq
@@ -93,6 +89,7 @@ pc2ps = convertp (:[])
 --      | '[' charset ']'
 --      | '.'
 -- charset ::= '^'? [^]]* -- negacao opcional seguido de qqr coisa menos ']' 0 ou mais vezes
+
 exp' :: Parser (Parser String)
 exp' = do
     x <- seq'
@@ -100,7 +97,7 @@ exp' = do
     return (foldr1 plus (x:xs))
 
 seq' :: Parser (Parser String)
-seq' = do { sq <- rep1 suffixed ; return (foldr1 chain sq) }
+seq' = do { l <- rep1 suffixed ; return (concatp (sequence l)) } 
 
 suffixed :: Parser (Parser String)
 suffixed = do {
@@ -134,15 +131,20 @@ primary = do {
 		return e;
 	} `orelse` do {
 		checkchar '[';
-		l <- classitem;
+		l <- rep classitem;
 		checkchar ']';
-		return (pc2ps (condchar l));
+		return (pc2ps (f l));
+	} `orelse` do {
+		c <- escaped `orelse` char;
+		return (pc2ps (checkchar c));
 	}
 	
+f l = condchar (\c -> or (map (flip ($) c) l))	
+
 classitem :: Parser( Char -> Bool )
 classitem = do {
-		ci <- rep (range `orelse` charmatches);
-		return (\c -> or (map (flip ($) c) ci));
+		ci <- (range `orelse` charmatches);
+		return ci;
 	}
 	
 range :: Parser (Char -> Bool)
@@ -154,11 +156,24 @@ range = do
 
 charmatches :: Parser (Char -> Bool)
 charmatches = do { c <- condchar (/=']'); return (==c) }
-	
+
 {----------------------------------------------
 	tests
 -----------------------------------------------}
 test :: String -> String -> [(String,String)]
 test re str = apply (parser exp' re) str  
+
+test_seq = (if test "abc" "abc" == [("abc", "")] then "Passed" else "Failed") ++ " (test 'abc' 'abc')\n"
+test_star = (if test "a*" "aaa" == [("aaa", "")] then "Passed" else "Failed") ++ " (test 'a*' 'aaa')\n"
+test_opt = (if test "a?b" "ab" == [("ab", "")] then "Passed" else "Failed") ++ " (test 'a?b' 'ab')\n"
+test_opt2 = (if test "a?b" "b" == [("b", "")] then "Passed" else "Failed") ++ " (test 'a?b' 'b')\n"
+test_classitem = (if test "[Rr]oberta" "roberta" == [("roberta", "")] then "Passed" else "Failed") ++ " (test '[Rr]oberta' 'roberta')\n"
+test_classitem2 = (if test "[Rr]oberta" "Roberta" == [("Roberta", "")] then "Passed" else "Failed") ++ " (test '[Rr]oberta' 'Roberta')\n"
+test_range = (if test "[0-9]+" "12345" == [("12345", "")] then "Passed" else "Failed") ++ " (test '[0-9]+' '12345')\n"
+
+test_url = (if test "((https?|ftp|telnet|file)://[[a-zA-Z0-9:#@%/;$()~_?\\+-=.&]*)" "http://www.google.com" == [("http://www.google.com", "")] then "Passed" else "Failed") ++ " (test url)\n"
+test_email = (if test "[A-Za-z0-9._-]+@[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)?" "rarcoverde@inf.puc.br" == [("rarcoverde@inf.puc.br", "")] then "Passed" else "Failed") ++ " (test email)\n"
+
+test_everything = putStr ( test_seq ++ test_star ++ test_opt ++ test_opt2 ++ test_classitem ++ test_classitem2 ++ test_range ++ test_url ++ test_email )
 
 -- digitos, email, url, cpf, data...
